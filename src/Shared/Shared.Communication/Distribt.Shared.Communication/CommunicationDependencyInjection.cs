@@ -10,6 +10,12 @@ namespace Distribt.Shared.Communication;
 
 public static class CommunicationDependencyInjection
 {
+    private static Dictionary<Type, Action<IServiceCollection>> PublisherInjectors = new()
+        {
+            { typeof(IntegrationMessage), (sc) => sc.AddIntegrationBusPublisher() },
+            { typeof(DomainMessage), (sc) => sc.AddDomainBusPublisher() },
+        };
+
     public static void AddConsumer<TMessage>(this IServiceCollection serviceCollection)
     {
         serviceCollection.AddSingleton<IConsumerManager<TMessage>, ConsumerManager<TMessage>>();
@@ -18,13 +24,9 @@ public static class CommunicationDependencyInjection
 
     public static void AddPublisher<TMessage>(this IServiceCollection serviceCollection)
     {
-        if (typeof(TMessage) == typeof(IntegrationMessage))
+        if (PublisherInjectors.TryGetValue(typeof(TMessage), out var addPublisherFn))
         {
-            serviceCollection.AddIntegrationBusPublisher();
-        }
-        else if (typeof(TMessage) == typeof(DomainMessage))
-        {
-            serviceCollection.AddDomainBusPublisher();
+            addPublisherFn.Invoke(serviceCollection);
         }
     }
 
